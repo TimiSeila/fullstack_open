@@ -57,6 +57,12 @@ const App = () => {
             setTimeout(() => {
               setSuccess(null);
             }, 5000);
+          })
+          .catch((error) => {
+            setError(error.response.data.error);
+            setTimeout(() => {
+              setError(null);
+            }, 5000);
           });
       }
       return;
@@ -67,15 +73,23 @@ const App = () => {
       number: newNumber,
     };
 
-    personService.createPerson(personObject).then((res) => {
-      setPersons(persons.concat(res));
-      setNewName("");
-      setNewNumber("");
-      setSuccess(`Person '${res.name}' added successfully`);
-      setTimeout(() => {
-        setSuccess(null);
-      }, 5000);
-    });
+    personService
+      .createPerson(personObject)
+      .then((res) => {
+        setPersons(persons.concat(res));
+        setNewName("");
+        setNewNumber("");
+        setSuccess(`Person '${res.name}' added successfully`);
+        setTimeout(() => {
+          setSuccess(null);
+        }, 5000);
+      })
+      .catch((error) => {
+        setError(error.response.data.error);
+        setTimeout(() => {
+          setError(null);
+        }, 5000);
+      });
   };
 
   const handleDeletePerson = (id, name) => {

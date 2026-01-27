@@ -1,29 +1,20 @@
+require("dotenv").config();
 const express = require("express");
 const morgan = require("morgan");
+const Person = require("./models/person");
 const app = express();
 
-let persons = [
-  {
-    name: "Arto Hellas",
-    number: "040-123456",
-    id: "1",
-  },
-  {
-    name: "Ada Lovelace",
-    number: "39-44-5323523",
-    id: "2",
-  },
-  {
-    name: "Dan Abramov",
-    number: "12-43-234345",
-    id: "3",
-  },
-  {
-    name: "Mary Poppendieck",
-    number: "39-23-6423122",
-    id: "4",
-  },
-];
+const errorHandler = (error, request, response, next) => {
+  if (error.name === "CastError") {
+    return response
+      .status(400)
+      .send({ error: "ID must be 24 character hex string" });
+  } else if (error.name === "ValidationError") {
+    return response.status(400).send({ error: error.message });
+  }
+
+  next(error);
+};
 
 morgan.token("body", (req) => {
   return JSON.stringify(req.body);
@@ -40,11 +31,44 @@ app.get("/", (request, response) => {
 });
 
 app.get("/api/persons", (request, response) => {
-  response.json(persons);
+  Person.find({}).then((res) => {
+    return response.json(res);
+  });
 });
 
-app.post("/api/persons", (request, response) => {
-  const newUserId = Math.floor(Math.random() * 99999999999);
+app.post("/api/persons", (request, response, next) => {
+  if (!request.body.name || !request.body.number) {
+    return response.status(400).json({
+      error: "Content missing",
+    });
+  }
+
+  const person = new Person({
+    name: request.body.name,
+    number: request.body.number,
+  });
+
+  person
+    .save()
+    .then((res) => {
+      return response.json(res);
+    })
+    .catch((error) => next(error));
+});
+
+app.get("/api/persons/:id", (request, response, next) => {
+  const { id } = request.params;
+
+  Person.findById(id)
+    .then((res) => {
+      if (!res) return response.status(404).end();
+      return response.json(res);
+    })
+    .catch((error) => next(error));
+});
+
+app.put("/api/persons/:id", (request, response, next) => {
+  const { id } = request.params;
 
   if (!request.body.name || !request.body.number) {
     return response.status(400).json({
@@ -52,49 +76,41 @@ app.post("/api/persons", (request, response) => {
     });
   }
 
-  const foundPerson = persons.find(
-    (person) => person.name === request.body.name,
-  );
-
-  if (foundPerson)
-    return response.status(409).json({
-      error: "Name must be unique",
-    });
-
-  const person = {
-    name: request.body.name,
-    number: request.body.number,
-    id: newUserId.toString(),
-  };
-
-  persons = persons.concat(person);
-
-  response.json(person);
+  Person.findById(id)
+    .then((res) => {
+      if (!res) return response.status(404).end();
+      res.number = request.body.number;
+      res
+        .save()
+        .then((res) => {
+          return response.json(res);
+        })
+        .catch((error) => next(error));
+    })
+    .catch((error) => next(error));
 });
 
-app.get("/api/persons/:id", (request, response) => {
+app.delete("/api/persons/:id", (request, response, next) => {
   const { id } = request.params;
 
-  const person = persons.find((person) => person.id === id);
-
-  if (!person) return response.status(404).end();
-
-  return response.json(person);
-});
-
-app.delete("/api/persons/:id", (request, response) => {
-  const { id } = request.params;
-  persons = persons.filter((person) => person.id !== id);
-
-  response.status(204).end();
+  Person.findByIdAndDelete(id)
+    .then((res) => {
+      return response.status(204).end();
+    })
+    .catch((error) => next(error));
 });
 
 app.get("/info", (request, response) => {
   const date = new Date();
-  response.send(
-    `<p>Phonebook has info for ${persons.length} people</p> <p>${date}</p>`,
-  );
+
+  Person.find({}).then((res) => {
+    return response.send(
+      `<p>Phonebook has info for ${res.length} people</p> <p>${date}</p>`,
+    );
+  });
 });
+
+app.use(errorHandler);
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
