@@ -38,7 +38,7 @@ const App = () => {
 
     if (foundPerson) {
       const confirm = window.confirm(
-        `${foundPerson.name} is already added to the phonebook, replace old number with a new one?`
+        `${foundPerson.name} is already added to the phonebook, replace old number with a new one?`,
       );
 
       if (confirm) {
@@ -48,8 +48,8 @@ const App = () => {
           .then((res) => {
             setPersons(
               persons.map((person) =>
-                person.id !== foundPerson.id ? person : res
-              )
+                person.id !== foundPerson.id ? person : res,
+              ),
             );
             setNewName("");
             setNewNumber("");
